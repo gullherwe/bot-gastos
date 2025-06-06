@@ -1,6 +1,7 @@
 from flask import Flask, request, Response
 from twilio.twiml.messaging_response import MessagingResponse
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 
@@ -68,8 +69,7 @@ def webhook():
         categorias = {}
         for g in gastos:
             if g[0].startswith(mes_atual):
-                cat = g[3]
-                categorias[cat] = categorias.get(cat, 0) + g[2]
+                categorias[g[3]] = categorias.get(g[3], 0) + g[2]
         if not categorias:
             resposta = "Nenhum gasto neste mês."
         else:
@@ -88,13 +88,15 @@ def webhook():
         )
 
     else:
+        # Tentar registrar gasto novo no formato "descrição - valor"
         try:
-            descricao, valor = [x.strip() for x in msg.split('-')]
+            descricao, valor = [x.strip() for x in msg.split('-', 1)]
             valor = float(valor.replace(',', '.'))
             data = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             categoria = detectar_categoria(descricao)
             nova_linha = f"{data},{descricao},{valor:.2f},{categoria}"
 
+            # Checar se gasto já foi registrado (última linha)
             try:
                 with open('gastos.csv', 'r') as f:
                     linhas = f.readlines()
@@ -112,9 +114,15 @@ def webhook():
                     f.write(f"{nova_linha}\n")
                 resposta = f"Gasto registrado: {descricao} - R${valor:.2f} ({categoria})"
 
-        except:
+        except Exception:
             resposta = "Formato inválido. Use: descrição - valor (ex: Café - 10.50)"
 
     resp = MessagingResponse()
     resp.message(resposta)
     return Response(str(resp), mimetype='application/xml')
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    print(f"Rodando na porta: {port}")
+    app.run(host="0.0.0.0", port=port, debug=True)
