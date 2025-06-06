@@ -118,9 +118,3 @@ def webhook():
     resp = MessagingResponse()
     resp.message(resposta)
     return Response(str(resp), mimetype='application/xml')
-
-import os
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # Pega a porta do Render, ou 5000 se não tiver
-    app.run(host="0.0.0.0", port=port, debug=True)
